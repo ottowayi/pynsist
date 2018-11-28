@@ -57,6 +57,7 @@ class InputError(ValueError):
     def __str__(self):
         return "{e.value!r} is not valid for {e.param}, expected {e.expected}".format(e=self)
 
+
 class InstallerBuilder(object):
     """Controls building an installer. This includes three main steps:
 
@@ -97,7 +98,7 @@ class InstallerBuilder(object):
                 py_format='bundled', inc_msvcrt=True, build_dir=DEFAULT_BUILD_DIR,
                 installer_name=None, nsi_template=None,
                 exclude=None, pypi_wheel_reqs=None, extra_wheel_sources=None,
-                local_wheels=None, commands=None, license_file=None):
+                local_wheels=None, commands=None, license_file=None, update=False, clean=True):
         self.appname = appname
         self.version = version
         self.publisher = publisher
@@ -111,6 +112,8 @@ class InstallerBuilder(object):
         self.local_wheels = local_wheels or []
         self.commands = commands or {}
         self.license_file = license_file
+        self._update = update
+        self._clean = clean
 
         # Python options
         self.py_version = py_version
@@ -450,15 +453,19 @@ if __name__ == '__main__':
     def run(self, makensis=True):
         """Run all the steps to build an installer.
         """
-        try:  # Start with a clean build directory
-            shutil.rmtree(self.build_dir)
-        except FileNotFoundError:
-            pass
-        os.makedirs(self.build_dir)
 
-        self.fetch_python_embeddable()
-        if self.inc_msvcrt:
-            self.prepare_msvcrt()
+        if self._clean:
+            try:  # Start with a clean build directory
+                shutil.rmtree(self.build_dir)
+            except FileNotFoundError:
+                pass
+        os.makedirs(self.build_dir, exist_ok=True)
+        shutil.copyfile(self.icon, Path(self.build_dir) / Path(self.icon).name)
+
+        if not self._update:
+            self.fetch_python_embeddable()
+            if self.inc_msvcrt:
+                self.prepare_msvcrt()
 
         self.prepare_shortcuts()
 
